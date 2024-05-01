@@ -5,7 +5,7 @@
 #include <MovingAveragePlus.h>
 
 
-volatile bool verbose_angle = false;   //for printing telementry to serial port for debug. Use with BeterSerialPlotter
+volatile bool verbose_angle = true;   //for printing telementry to serial port for debug. Use with BeterSerialPlotter
 
 ///// Android user adjustable paramters - speed responses
 double scroll_threshold = 0.22;    //min velocity to start scrooling. betwen 0.1 and 0.8
@@ -18,11 +18,10 @@ double scroll_acc = 50;           //between 10-30 if you want acceleration boost
 ///// PC user adjustable paramters - speed responses
 double PC_scroll_scale = 0.25;
 
-int idleCountThreshold = 30;  // seconds until idle mode starts 
+int idleCountThreshold = 30;  // seconds until idle mode starts
 
-// Create a new char array to hold the full device name
-char deviceName[20];  // Adjust size as necessary to fit the base name and number
 
+const char* deviceName = "Doomscroller021";  //bluetooth device name
 
 
 
@@ -179,7 +178,7 @@ uint8_t hid_report_descriptor[] PROGMEM = {
 
   /* End of mouse application collection */
   0xc0, /* END_COLLECTION */
-  
+
 
 
 
@@ -240,9 +239,8 @@ void setup() {
   delay(100); // Short delay to ensure serial communication is established
 
   //configure bluetooth
-  Bluefruit.configPrphBandwidth(BANDWIDTH_HIGH); // Configure the maximum bandwidth for the Bluetooth peripheral
+  Bluefruit.configPrphBandwidth(BANDWIDTH_MAX); // Configure the maximum bandwidth for the Bluetooth peripheral
   Bluefruit.begin(1, 1); // Initialize Bluefruit library with 1 peripheral and 1 central
-  sprintf(deviceName, "%s_%d", "Doomscroller ", random(1000));
   Bluefruit.setName(deviceName); // Set the Bluetooth device name
   bledis.setManufacturer("Andrew Industries"); // Set the manufacturer name in the BLE device information service
   bledis.setModel("Doomscroller V0.1"); // Set the model name in the BLE device information service
@@ -251,7 +249,7 @@ void setup() {
   blehid.setReportMap(hid_report_descriptor, sizeof(hid_report_descriptor));  // Set the HID report map using the descriptor and its size
   blehid.setReportLen(input_report_lengths, NULL, NULL); // Set the report lengths for input, output, and feature reports
   blehid.begin(); // Initialize the BLE HID service
-  Bluefruit.Periph.setConnInterval(8, 16);  // Set the connection interval range (8 can be unstable, so it's the minimum)
+  Bluefruit.Periph.setConnInterval(9, 16);  // Set the connection interval range (8 can be unstable, so it's the minimum)
   startAdvertising(); // Start BLE advertising to make the device discoverable
 
 
@@ -293,7 +291,9 @@ void setup() {
 void loop() {
   if (isIdle)  //check to see if rotation has occured in the last XX seconds. If not, skip for battery savings
   {
-    Serial.println("Idle");
+
+    Serial.print(deviceName);
+    Serial.println(" is idle");
     delay(100);
     return;
   }
@@ -447,7 +447,7 @@ void loop() {
 
   if (velocityMovingAverage < -40 && accMovingAverage < -4 && isClicked == true) // experimental back click
   {
-  // mouse_back() 
+    // mouse_back()
   }
 
 
