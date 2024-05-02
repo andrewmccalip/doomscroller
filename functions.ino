@@ -1,4 +1,5 @@
-void acquireAndProcessAngle() {
+void acquireAndProcessAngle()  //This does all the heavy lifting. Samples enocder from SPI and stores to moving average. 
+ {
   uint16_t newAngle = magAlpha.readAngleRaw();   // Acquire angle from MagAlpha MPS encoder
 
   // Calculate the difference, taking wrap-around into account
@@ -32,15 +33,13 @@ void acquireAndProcessAngle() {
   }
 
   
-  veloAvg.push(angleVelocity);
-
-
+  veloAvg.push(angleVelocity); //adds to angle moving average buffer
   velocityMovingAverage = (veloAvg.get());
 
   //acceleration average
   acceleration = velocityMovingAverage - prevVelAvg;  // Compute the first derivative of the angle moving average (velocity)
-  accAvg.push(acceleration);
-  accMovingAverage = (accAvg.get());
+  accAvg.push(acceleration); //adds to angle moving average buffer
+  accMovingAverage = (accAvg.get());  //computes average from buffer 
 
   /////previous states
   prevAngleMovingAverage = angleMovingAverage;
@@ -49,7 +48,8 @@ void acquireAndProcessAngle() {
 
 }
 
-void idlecheck() {  //this function checks to see if the wheel has moved in the last X secondss.
+void idlecheck() {  //this function checks to see if the wheel has moved in the last X secondss. Needs to be very short to not crash ISR. 
+  
   //Serial.println("Checking idle state");  //only enable this for debug. Might crash ISR
   digitalWrite(pin_MPS_enable, HIGH);  // wake up and enable pin MPS enocder
   acquireAndProcessAngle();
@@ -67,12 +67,11 @@ void idlecheck() {  //this function checks to see if the wheel has moved in the 
     digitalWrite(pin_MPS_enable, HIGH);  // enable pin MPS enocder
     idleCounts = 0;
 
-
   } else {
     idleCounts = idleCounts + 1;
   }
 
-
+  
   if (idleCounts > idleCountThreshold) //enables idle
   {
     isIdle = true;                      // Less than 360 degrees of rotation, considered idle
@@ -80,6 +79,11 @@ void idlecheck() {  //this function checks to see if the wheel has moved in the 
     // Serial.println("Idle enabled");  //only enable this for debug. Might crash ISR
   }
 
+   if (idleCounts > 3600) //if idle for an 3600 seconds(hour), reboot
+  {
+    NVIC_SystemReset(); //reboot
+    // Serial.println("Rebooting");  //only enable this for debug. Might crash ISR
+  }
   prevTotalRotation = totalRotation;
 }
 
@@ -87,9 +91,9 @@ void idlecheck() {  //this function checks to see if the wheel has moved in the 
 
 void scroll_calcs() //computes how many pixels to scroll by on each loop event
 {
-  scroll_distance = scroll_base_distance + abs(scroll_scale * velocityMovingAverage) + abs(scroll_acc * pow(accMovingAverage, 2)); //always positive
-  scrollAvg.push(scroll_distance);
-  scrollAverage = (scrollAvg.get());
+  scroll_distance = scroll_base_distance + abs(scroll_scale * velocityMovingAverage) + abs(scroll_acc * pow(accMovingAverage, 2)); //most important equation 
+  scrollAvg.push(scroll_distance);  //adds to moving average buffer 
+  scrollAverage = (scrollAvg.get());  //computes average from buffer 
 }
 
 
@@ -102,7 +106,7 @@ void startAdvertising(void) //bluetooth pairing
   Bluefruit.Advertising.addName();
   Bluefruit.Advertising.restartOnDisconnect(true);
   Bluefruit.Advertising.setInterval(32, 244);  // in unit of 0.625 ms
-  Bluefruit.Advertising.setFastTimeout(30);    // number of seconds in fast mode
+  Bluefruit.Advertising.setFastTimeout(90);    // number of seconds in fast mode
   Bluefruit.Advertising.start(0);              // 0 = Don't stop advertising after n seconds
 }
 
@@ -220,12 +224,10 @@ void mouse_back()   //experimental back button
   delay(200); // Hold the button for 100 milliseconds
   scroll_android(x_start, y_pos, false);
   Serial.println("Click back");
-  delay(200); // Hold the button for 100 milliseconds
-  clickMouseButton(4, true); // Press button 1
+  delay(200); // Hold the button for 200 milliseconds
+  clickMouseButton(4, true); // Press button 4 (back button)
   delay(100); // Hold the button for 100 milliseconds
-  clickMouseButton(4, false); // Release button 1
-  // isClicked == false;
-  //  isIdle = false;
-  delay(1000); // Hold the button for 100 milliseconds
+  clickMouseButton(4, false); // Release  button 4 (back button)
+  delay(1000); // Hold the button for 1000 milliseconds
   // return;
 }

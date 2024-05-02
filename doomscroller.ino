@@ -1,27 +1,26 @@
 #include <bluefruit.h>
-#include <MagAlpha.h>
 #include <math.h>
-#include <NRF52TimerInterrupt.h>
-#include <MovingAveragePlus.h>
+#include <MagAlpha.h>   //third party library, need to download
+#include <NRF52TimerInterrupt.h>  //third party library, need to download
+#include <MovingAveragePlus.h>  //third party library, need to download
 
 
 volatile bool verbose_angle = true;   //for printing telementry to serial port for debug. Use with BeterSerialPlotter
 
 ///// Android user adjustable paramters - speed responses
-double scroll_threshold = 0.22;    //min velocity to start scrooling. betwen 0.1 and 0.8
-int scroll_time = 4;             // milliseconds of main loop.  Should be between 10-20ms
+double scroll_threshold = 0.22;    //min velocity to start scrolling. betwen 0.1 and 0.8. Too low will cause it to never settle
+int scroll_time = 4;             // milliseconds of main loop.  Should be between 2-20ms. Too slow will cause lag in android 
 double scroll_base_distance = 3;  //min pixels to scroll in velocity calculation
-double scroll_scale = 11;         //between 5 -20
-double scroll_vel_max = 8;         //between 5 -20
-double scroll_acc = 50;           //between 10-30 if you want acceleration boosted response - IE flicking
+double scroll_scale = 11;         //Scroll speed gain factor. between 5 -20
+double scroll_vel_max = 8;         //Sets max to scroll speed. between 5 -20
+double scroll_acc = 50;           //between 10-100 if you want acceleration boosted response - IE flicking. Instragram benefits from this being higher. 
 
 ///// PC user adjustable paramters - speed responses
-double PC_scroll_scale = 0.25;
+double PC_scroll_scale = 0.25;  //Scroll speed gain factor for PC dial driver. This scales down the default android calculations. 
 
+///// User adjustable paramters - speed responses
 int idleCountThreshold = 30;  // seconds until idle mode starts
-
-
-const char* deviceName = "Doomscroller021";  //bluetooth device name
+const char* deviceName = "Doomscroller001";  //bluetooth device name
 
 
 
@@ -33,12 +32,12 @@ MovingAveragePlus<double> scrollAvg(5); // Initializes a moving average for scro
 
 //// system
 unsigned long time_ms; // Variable to store time in milliseconds
-int x_start = 5000; // Initial x-coordinate for scrolling action
-int y_start = 5000; // Initial y-coordinate for scrolling action
+int x_start = 5000; // Initial x-coordinate on screen  for scrolling action. Range is 0-10000
+int y_start = 5000; // Initial y-coordinate for scrolling action.  Range is 0-10000
 #define ANDROID_REPORT_ID 1 // Report ID for Android HID reports
 #define PC_REPORT_ID 3 // Report ID for PC HID reports
-#define UART_BAUDRATE 115200 // Baud rate for UART communication
-#define SPI_SCLK_FREQUENCY 5000000 // SPI clock frequency in Hz
+#define UART_BAUDRATE 115200 // Baud rate for UART serial communication
+#define SPI_SCLK_FREQUENCY 5000000 // SPI clock frequency in Hz. Don't go above 10mhz 
 #define SPI_CS_PIN 0 // Chip Select pin for SPI communication
 #define pin_MPS_enable 1 // Pin to enable/disable MPS (Magnetic Position Sensor)
 #define TIMER_IDLE_INTERVAL_MS 1000 // Interval in milliseconds to check for idle state. Determines how fast it wakes up 
@@ -48,7 +47,6 @@ int y_start = 5000; // Initial y-coordinate for scrolling action
 //// Idle detection parameters
 volatile double prevTotalRotation ; // Stores the previous total rotation value for idle detection
 int idleCounts;                 // Counter for consecutive idle checks
-
 volatile bool isIdle = false; // Flag to indicate if the device is currently idle
 volatile bool isClicked = false; // Flag to indicate if a click action has occurred (not directly related to idle detection but may be used for UI interaction)
 volatile double currentTime; // Variable to store the current time, potentially for idle time tracking
@@ -74,7 +72,7 @@ int y_pos; // Current y position for scrolling action
 int click_ypos; // Y position when a click action is detected
 
 
-
+//HID descriptor to define USB device type. 
 uint8_t hid_report_descriptor[] PROGMEM = {
 
   // begin Android Touchpad HID descriptor
@@ -140,7 +138,9 @@ uint8_t hid_report_descriptor[] PROGMEM = {
   /* End of touchscreen application collection */
   0xc0, /* END_COLLECTION */
 
-  /* Mouse Descriptor starts here */
+
+
+  /* Mouse Descriptor starts here */  //This is for the experimental back button click 
   0x05, 0x01, /* USAGE_PAGE (Generic Desktop) */
   0x09, 0x02, /* USAGE (Mouse) */
   0xa1, 0x01, /* COLLECTION (Application) */
@@ -172,14 +172,8 @@ uint8_t hid_report_descriptor[] PROGMEM = {
   0x75, 0x08, /*     REPORT_SIZE (8) */
   0x95, 0x01, /*     REPORT_COUNT (1) */
   0x81, 0x06, /*     INPUT (Data,Var,Rel) */
-
-  /* End of mouse physical collection */
-  0xc0, /* END_COLLECTION */
-
-  /* End of mouse application collection */
-  0xc0, /* END_COLLECTION */
-
-
+  0xc0, /* END_COLLECTION */   /* End of mouse physical collection */
+  0xc0, /* END_COLLECTION */   /* End of mouse application collection */
 
 
 
@@ -229,14 +223,15 @@ BLEDis bledis; // Initialize BLE device information service
 BLEHidGeneric blehid = BLEHidGeneric(3); // Initialize BLE HID with 3 as the parameter, possibly indicating the number of HID reports
 
 MagAlpha magAlpha; // Initialize an instance of MagAlpha, likely a magnetic position sensor
-
 void acquireAndProcessAngle(); // Declaration of a function to acquire and process angle data
-NRF52Timer ITimer1(NRF_TIMER_1); // Initialize a timer with NRF_TIMER_1 as the timer instance
+NRF52Timer ITimer1(NRF_TIMER_1); // Initialize a timer with NRF_TIMER_1 as the timer instance. For idle check
 
 
 void setup() {
   Serial.begin(UART_BAUDRATE); // Initialize serial communication at a baud rate defined by UART_BAUDRATE
-  delay(100); // Short delay to ensure serial communication is established
+  delay(200); // Short delay to ensure serial communication is established
+  Serial.print(deviceName);
+  Serial.println(" booting");
 
   //configure bluetooth
   Bluefruit.configPrphBandwidth(BANDWIDTH_MAX); // Configure the maximum bandwidth for the Bluetooth peripheral
@@ -249,7 +244,7 @@ void setup() {
   blehid.setReportMap(hid_report_descriptor, sizeof(hid_report_descriptor));  // Set the HID report map using the descriptor and its size
   blehid.setReportLen(input_report_lengths, NULL, NULL); // Set the report lengths for input, output, and feature reports
   blehid.begin(); // Initialize the BLE HID service
-  Bluefruit.Periph.setConnInterval(9, 16);  // Set the connection interval range (8 can be unstable, so it's the minimum)
+  Bluefruit.Periph.setConnInterval(9, 16);  // Set the connection interval range (8 can be unstable, so it's the minimum). Devices try to negociate to a lower rate (increased latency)
   startAdvertising(); // Start BLE advertising to make the device discoverable
 
 
@@ -259,14 +254,13 @@ void setup() {
   magAlpha.writeRegister(2, 0);  //MPS encoder BCT side shaft config. imporant.
   magAlpha.writeRegister(3, 2);  //MPS encoder enable y triming
   magAlpha.writeRegister(14, 0xB0);  //set filter to value 11 (78hz)
-  magAlpha.writeRegister(9, 128); //binary for 1000000 (reverse)
+  magAlpha.writeRegister(9, 128); //binary for 1000000 (reverse direction)
   Serial.print("MPS encoder BCT setup");
 
-  // timer for idle detection
+  // enables background ISR timer for idle detection. Maybe we can make this not use ISR?
   if (ITimer1.attachInterruptInterval(TIMER_IDLE_INTERVAL_MS * 1000, idlecheck)) {
     Serial.println(F("Idle Timer started successfully"));
   }
-
 
 
   ////Bluetooth connection loop. Tries to connect for 10 seconds.
@@ -284,21 +278,23 @@ void setup() {
   }
 
   time_ms = millis(); // Reset the timer to current time for next operations
-}
+  Serial.print(deviceName);
+  Serial.println(" booted");
+
+} 
 
 
 
 void loop() {
-  if (isIdle)  //check to see if rotation has occured in the last XX seconds. If not, skip for battery savings
+  if (isIdle)  //check to see if xx degrees of rotation has occured in the last XX seconds. If not, skip for battery savings
   {
-
     Serial.print(deviceName);
     Serial.println(" is idle");
-    delay(100);
+    delay(500);
     return;
   }
 
-  //Verbose debug printing at 200ms
+  //Verbose debug printing at 200ms. Use with betterserialplotter
   static unsigned long lastPrintTime = 0;
   if (verbose_angle && millis() - lastPrintTime >= 200) {
     lastPrintTime = millis();
@@ -325,40 +321,42 @@ void loop() {
   }
 
 
-  //// acquire encoder signal and process moving averages
-  acquireAndProcessAngle();
-  scroll_calcs();
+
+  acquireAndProcessAngle();   //// acquire encoder signal and process moving averages
+  scroll_calcs();   // calculate the distance in pixels to scroll based on velocity 
 
 
-  ////////////// Negtive velocity - scroll down
-  if (velocityMovingAverage < -scroll_threshold)
+  //////////////  logic for scroll events ///////////////////
+
+  if (velocityMovingAverage < -scroll_threshold)    // Negtive velocity - scroll down
   {
     //Serial.println("Velocity is negative. Scroll down ");
     if (isClicked == false)  //Unclicked mouse state . Move extra to escape 40px controls zone.
     {
-      scroll_android(x_start, y_pos, true);
+      scroll_android(x_start, y_pos, true);  //touchpad event. calls scroll event to be transmitted through HID report 
       click_ypos = y_pos;
       delay(scroll_time);
       y_pos -= 41;
-      scroll_android(x_start, y_pos, true);
+      scroll_android(x_start, y_pos, true)  //touchpad event. calls scroll event to be transmitted through HID report 
       isClicked = true;
       delay(scroll_time);
       isIdle = false;
 
     }
 
-    if (isClicked == true)  //Clicked mouse state
+    if (isClicked == true)  //Clicked mouse state. 99% of events. 
     {
-      y_pos += scrollAverage;
-      scroll_android(x_start, y_pos, true);
-      scroll_PC(-scrollAverage);
+      y_pos += scrollAverage;  // y_pos is the vertical location of the cursor
+      scroll_android(x_start, y_pos, true); //calls scroll event to be transmitted through HID report 
+      scroll_PC(-scrollAverage); //calls scroll event to be transmitted through HID report 
       isClicked = true;
       delay(scroll_time);
       isIdle = false;
     }
 
-    // Reset y_pos to the middle if it goes out of bounds
-    if (y_pos < 2500 || y_pos > 7500) {
+    
+    if (y_pos < 2500 || y_pos > 7500)  // Reset y_pos to the middle if it goes out of bounds. Note that upper and lower 25% shouldn't be used due to menus 
+    {
       if ( abs(click_ypos - y_pos) > 50 && isClicked == true) //don't allow a lift until min move threshold, to prevent accidental clicks
       {
         y_pos = 5000;
@@ -367,22 +365,21 @@ void loop() {
       }
     }
     idleEvents = 0;
-  }
+  }    // end of negtive velocity - scroll down case 
 
 
 
 
-  ////////////////////// Positive velocity - scroll up //////////////////
-  if (velocityMovingAverage > scroll_threshold)
+  if (velocityMovingAverage > scroll_threshold) //// Positive velocity - scroll up //////////////////
   {
     //Serial.println("Velocity is negative");
     if (isClicked == false)  //Unclicked mouse state . Move extra to escape 40px controls zone.
     {
-      scroll_android(x_start, y_pos, true);  //click mouse
+      scroll_android(x_start, y_pos, true);  //touchpad event. calls scroll event to be transmitted through HID report 
       click_ypos = y_pos;
       delay(scroll_time);
       y_pos -= -41;
-      scroll_android(x_start, y_pos, true); //click mouse
+      scroll_android(x_start, y_pos, true); //touchpad event. calls scroll event to be transmitted through HID report 
       isClicked = true;
       delay(scroll_time);
       isIdle = false;
@@ -398,7 +395,8 @@ void loop() {
       isClicked = true;
     }
 
-    if (y_pos < 2500 || y_pos > 7500) { // Reset y_pos to the middle if it goes out of bounds
+    if (y_pos < 2500 || y_pos > 7500) // Reset y_pos to the middle if it goes out of bounds. Note that upper and lower 25% shouldn't be used due to menus 
+    { 
       if ( abs(click_ypos - y_pos) > 50 && isClicked == true) //don't allow a lift until min move threshold, to prevent accidental clicks
       {
         y_pos = 5000;
@@ -411,6 +409,7 @@ void loop() {
 
 
   ////////////////////   zero velocty. Stop scroll  ///////////////////
+  //This one has been very problematic. The big issue is lifting the finger touch state before enough scrolling has happened. This results in accidental button clicks. 
   if (velocityMovingAverage < scroll_threshold && velocityMovingAverage > -scroll_threshold)
   {
     if (idleEvents >= 80 && abs(accMovingAverage) < 0.2) // Don't let go of mouse unless stationary for time enough time.
@@ -445,7 +444,7 @@ void loop() {
 
 
 
-  if (velocityMovingAverage < -40 && accMovingAverage < -4 && isClicked == true) // experimental back click
+  if (velocityMovingAverage < -40 && accMovingAverage < -4 && isClicked == true) // experimental back click on flick backwards. Not currently used. 
   {
     // mouse_back()
   }
