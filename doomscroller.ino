@@ -256,10 +256,10 @@ void setup() {
   magAlpha.writeRegister(9, 128); //binary for 1000000 (reverse direction)
   Serial.print("MPS encoder BCT setup");
 
-//  // enables background ISR timer for idle detection. Maybe we can make this not use ISR?
-//  if (ITimer1.attachInterruptInterval(TIMER_IDLE_INTERVAL_MS * 1000, idlecheck)) {
-//    Serial.println(F("Idle Timer started successfully"));
-//  }
+  //  // enables background ISR timer for idle detection. Maybe we can make this not use ISR?
+  //  if (ITimer1.attachInterruptInterval(TIMER_IDLE_INTERVAL_MS * 1000, idlecheck)) {
+  //    Serial.println(F("Idle Timer started successfully"));
+  //  }
 
 
   ////Bluetooth connection loop. Tries to connect for 10 seconds.
@@ -289,16 +289,16 @@ void loop() {
   unsigned long currentTime = millis();
   if (currentTime - lastIdleCheckTime >= idleCheckInterval)  //Checks for idle state every 1000ms
   {
-    idlecheck();  // Wakes up encoder and looks for change in angle.  
+    idlecheck();  // Wakes up encoder and looks for change in angle.
     lastIdleCheckTime = currentTime;  // Update the last check time
   }
-  
+
   if (isIdle)  //check to see if xx degrees of rotation has occured in the last XX seconds. If not, skip for battery savings
   {
     Serial.print(deviceName);
     Serial.println(" is idle");
     delay(500);
-    return; //skip the rest of the program 
+    return; //skip the rest of the program
   }
 
 
@@ -457,9 +457,9 @@ void loop() {
   {
     // mouse_back()
   }
-  ////   end of scrolling logic 
+  ////   end of scrolling logic
 
 
-  
+
   delay(1); //important to have a min delay
 }
