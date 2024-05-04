@@ -25,13 +25,16 @@ Post-Upload Reset: Ensure to perform a magnetic reset right after the code is fl
 ## Troubleshooting and FAQ
 
 ### Device not working with iPhone: ###
-* iOS functionality is currently not supported. Contact Andrew for alternatives such as store credit or a return.
+* You're out of luck until our cracked squad of software engineers gets iOS functionality working. Talk to Andrew about getting store credit or a return.
 
-### Adjusting Scroll Speed and Responsiveness: ###
-* Modify user settings in the main .ino file. Adjust scale and max velocity for performance. Experiment with the buffer lengths in moving averages for desired responsiveness.
+  
+### Can I adjust scroll speed and responsiveness? ###
 
-### Connection Issues: ###
-* Latency or choppy scroll action can often be fixed by a magnetic swipe before pairing to optimize Bluetooth update rates.
+* Absolutely! There are a set of user adjustable values in the top of the main .ino file. Most important factors are scale and max velocity. Suggested values are provided as a starting point.
+*  The buffer lengths of the moving averages buffers can also be adjusted. A shorter buffer will result in a more snappy response, but will have more velocity ripple.
+
+### Connection is laggy: ###
+* If there is latency and chunky feeling scroll action, there is a chance that the Bluetooth pairing rate has been negotiated incorrectly. BLE operates at a range of update rates, depending on what the phone determines. I've noticed that if you're pairing while the device is in idle mode, it can put it into a low rate mode which results in chunky scrolling. Best practice is to perform a single swipe magnetic swipe right before pairing
 
 ### Entering Bootloader Mode: ###
 * Perform a double magnetic tap on the "C" letter of the PCB to enter bootloader mode, mimicking a double-click of the onboard reset switch. This will present the device as a removable USB drive for firmware updates.
