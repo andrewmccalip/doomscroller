@@ -36,6 +36,9 @@ perform a magnetic reset right afterwards.
 
 ## Troubleshooting and FAQ
 
+### Not scrolling after pairing ###
+* Perform a magnetic reset on the back PCB before AND after pairing. 
+
 ### Device not working with iPhone: ###
 * You're out of luck until our cracked squad of software engineers
   gets iOS functionality working. Talk to Andrew about getting store
