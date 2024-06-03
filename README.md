@@ -1,38 +1,27 @@
-## Step 1: Set Up the Seeed nRF52840 on Arduino IDE
-Install the Arduino IDE: Download from the official Arduino website.
+# Pairing Instructions:
 
-Add the Seeed Board to Arduino IDE:
+* Verify that the blue LED can be seen blinking when looking into the USB-C connector. This indicates that the DoomScroller is in discovery/pairing mode with no active connection. If no light is seen, battery probably needs recharging. 
 
-Go to File > Preferences, and insert this URL into "Additional Boards Manager URLs":
+	![AndrewMcCalipsVideo-Jun22024-ezgif com-crop](https://github.com/enderfusion/doomscroller/assets/18008735/13dc09b1-36b5-4126-853e-91fdfe486cd4)
 
-	https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+* Swipe the magnet once over the back PCB lid. The hall sensor sits directly under the letter "C". This resets the board and puts the NRF chip into pairing mode
 
-Navigate to Tools > Board > Boards Manager, search for "Seeed nRF52 Boards", and install it.
+ 	![image](https://github.com/enderfusion/doomscroller/assets/18008735/b828ad0d-6260-4293-a379-4f88b7064f22)
 
-Choose Tools> Board > Seeed nRF52 Boards > Seeed XIAO nRF52840 Sense
+* Verify that the blue light can be seen in USB-C
 
-You may also need to install adafruit-nrfutil:
+* Pair device on your Android / PC
 
-    pip3 install adafruit-nrfutil
+* *VERY IMPORTANT* Perform a second magnetic reset swipe. This is critical for Android to properly recognize the device. Eventually we'll move this into firmware...
 
-## Step 2: Install Required Libraries
-MPS MagAlpha and MovingAveragePlus Libraries are needed.
 
-Open Sketch > Include Library > Manage Libraries....
 
-Search and install "MPS MagAlpha" and "MovingAveragePlus".
 
-## Step 3: Set Debug Level
 
-Tools > Debug Level > Level 2 (Full Debug)
-
-## Step 4: Upload Code
-Connect the Doomscroller via USB C.  If the device isn't recognized as
-a COM port, perform a magnetic triggered reset by swiping a magnet
-across the back PCB before uploading your code.
-
-Usually the sketch starts running after flashing.  If it doesn't,
-perform a magnetic reset right afterwards.
+<br/> 
+<br/> 
+<br/> 
+<br/> 
 
 ## Troubleshooting and FAQ
 
@@ -80,3 +69,48 @@ perform a magnetic reset right afterwards.
   bootloader mode, mimicking a double-click of the onboard reset
   switch. This will present the device as a removable USB drive for
   firmware updates.
+
+<br/> 
+<br/> 
+<br/> 
+<br/> 
+
+# Flashing custom firmware
+
+## Step 1: Set Up the Seeed nRF52840 on Arduino IDE
+Install the Arduino IDE: Download from the official Arduino website.
+
+Add the Seeed Board to Arduino IDE:
+
+Go to File > Preferences, and insert this URL into "Additional Boards Manager URLs":
+
+	https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json
+
+Navigate to Tools > Board > Boards Manager, search for "Seeed nRF52 Boards", and install it.
+
+Choose Tools> Board > Seeed nRF52 Boards > Seeed XIAO nRF52840 Sense
+
+You may also need to install adafruit-nrfutil:
+
+    pip3 install adafruit-nrfutil
+
+## Step 2: Install Required Libraries
+MPS MagAlpha and MovingAveragePlus Libraries are needed.
+
+Open Sketch > Include Library > Manage Libraries....
+
+Search and install "MPS MagAlpha" and "MovingAveragePlus".
+
+## Step 3: Set Debug Level
+
+Tools > Debug Level > Level 2 (Full Debug)
+
+## Step 4: Upload Code
+Connect the Doomscroller via USB C.  If the device isn't recognized as
+a COM port, perform a magnetic triggered reset by swiping a magnet
+across the back PCB before uploading your code.
+
+Usually the sketch starts running after flashing.  If it doesn't,
+perform a magnetic reset right afterwards.
+
+
