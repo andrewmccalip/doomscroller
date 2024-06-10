@@ -19,7 +19,7 @@ double PC_scroll_scale = 0.25;  //Scroll speed gain factor for PC dial driver. T
 
 ///// User adjustable paramters - speed responses
 int idleCountThreshold = 30;  // seconds until idle mode starts
-const char* deviceName = "Doomscroller140";  //bluetooth device name
+const char* deviceName = "Doomscroller168";  //bluetooth device name
 
 
 
